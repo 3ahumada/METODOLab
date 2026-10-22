@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 type Props={value:string;onChange:(html:string)=>void;label:string;onError:(message:string)=>void};
 const MAX_IMAGE=2*1024*1024;
 export function cleanHtml(html:string):string{
@@ -12,7 +12,8 @@ export function cleanHtml(html:string):string{
   if(el.tagName==="IMG"){
    const src=el.getAttribute("src")||"";
    if(!/^data:image\/(png|jpeg|webp|gif);base64,[a-zA-Z0-9+/=]+$/.test(src))return "";
-   return '<img src="'+src+'" alt="Imagen del anteproyecto">';
+   const width=Math.min(100,Math.max(10,Number(el.getAttribute("data-width")||100)||100));
+   return '<img src="'+src+'" alt="Imagen del anteproyecto" data-width="'+width+'" style="width:'+width+'%;height:auto">';
   }
   const tag=el.tagName.toLowerCase();
   return "<"+tag+">"+Array.from(el.childNodes).map(clean).join("")+"</"+tag+">";
@@ -22,6 +23,11 @@ export function cleanHtml(html:string):string{
 export function RichEditor({value,onChange,label,onError}:Props){
  const ref=useRef<HTMLDivElement>(null);
  const fileRef=useRef<HTMLInputElement>(null);
+ const selectedImg=useRef<HTMLImageElement|null>(null);
+ const [imageWidth,setImageWidth]=useState(100);
+ const [hasImage,setHasImage]=useState(false);
+ const chooseImage=(img:HTMLImageElement)=>{selectedImg.current=img;setImageWidth(Number(img.getAttribute("data-width")||100));setHasImage(true)};
+ const resize=(width:number)=>{const img=selectedImg.current;if(!img||!ref.current?.contains(img))return;img.setAttribute("data-width",String(width));img.style.width=width+"%";img.style.height="auto";setImageWidth(width);save()};
  useEffect(()=>{if(ref.current&&ref.current.innerHTML!==value&&document.activeElement!==ref.current)ref.current.innerHTML=cleanHtml(value)},[value]);
  const save=()=>{if(ref.current)onChange(cleanHtml(ref.current.innerHTML))};
  const insertImage=(file?:File)=>{
@@ -31,14 +37,14 @@ export function RichEditor({value,onChange,label,onError}:Props){
   const reader=new FileReader();
   reader.onload=()=>{
    const src=String(reader.result||"");
-   const img=document.createElement("img");img.src=src;img.alt="Imagen del anteproyecto";img.style.maxWidth="100%";
+   const img=document.createElement("img");img.src=src;img.alt="Imagen del anteproyecto";img.style.maxWidth="100%";img.style.width="60%";img.setAttribute("data-width","60");
    const target=ref.current;if(!target)return;
    target.focus();
    const selection=window.getSelection();
    if(selection&&selection.rangeCount&&target.contains(selection.anchorNode)){
     const range=selection.getRangeAt(0);range.deleteContents();range.insertNode(img);range.setStartAfter(img);range.collapse(true);selection.removeAllRanges();selection.addRange(range);
    }else target.appendChild(img);
-   save();
+   chooseImage(img);save();
   };
   reader.readAsDataURL(file);
  };
@@ -49,5 +55,5 @@ export function RichEditor({value,onChange,label,onError}:Props){
   <button type="button" onClick={()=>format("insertUnorderedList")} title="Viñetas">• Lista</button>
   <button type="button" onClick={()=>fileRef.current?.click()}>+ Insertar imagen</button>
   <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={e=>{insertImage(e.target.files?.[0]);e.target.value=""}}/>
- </div><div ref={ref} className="rich-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onInput={save} onBlur={save}/></div>
+ </div>{hasImage&&<div className="image-resizer"><label>Anchura de la imagen: {imageWidth}% <input type="range" min="10" max="100" step="5" value={imageWidth} onChange={e=>resize(Number(e.target.value))}/></label><button type="button" onClick={()=>{const img=selectedImg.current;if(img&&ref.current?.contains(img)){img.remove();save()}selectedImg.current=null;setHasImage(false)}}>Eliminar imagen</button></div>}<div ref={ref} className="rich-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label={label} aria-multiline="true" onClick={e=>{const t=e.target;if(t instanceof HTMLImageElement)chooseImage(t)}} onInput={save} onBlur={save}/></div>
 }
