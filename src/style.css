@@ -20,3 +20,10 @@
  h2,h3{break-after:avoid}
  @page{size:A4;margin:18mm}
 }
+
+.image-resizer{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 12px;background:#eaf4ee;border-bottom:1px solid #c8dfd0}
+.image-resizer label{display:flex!important;align-items:center;gap:12px;margin:0!important;font-size:13px;color:#07533e}
+.image-resizer input[type=range]{width:160px;accent-color:#07583f}
+.image-resizer button{padding:6px 10px}
+.rich-editor img{max-width:100%;height:auto;cursor:pointer}
+@media print{.image-resizer{display:none!important}}
